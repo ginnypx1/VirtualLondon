@@ -69,6 +69,13 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         } catch {
             print("Error performing initial fetch")
         }
+
+        
+    }
+    
+    // MARK: - Check for fetched images
+    
+    func checkForStoredImages() {
     }
     
     // MARK: - Activity Indicator
@@ -103,7 +110,7 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
     
-    // MARK: - Collection Button
+    // MARK: - Configure Collection Button
     
     func configureButton() {
         if isEditingPhotoAlbum {
@@ -123,6 +130,12 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         let sectionInfo = self.fetchedResultsController.sections![section]
         
         print("number Of Cells: \(sectionInfo.numberOfObjects)")
+        
+        // check to see if images need to be downloaded
+        if sectionInfo.numberOfObjects == 0 {
+            fetchImages()
+        }
+        
         return sectionInfo.numberOfObjects
     }
     
@@ -249,90 +262,64 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         self.activityIndicator.startAnimating()
         self.collectionButton.isEnabled = false
         
-        print("Starting request for photos...")
+        print("1. Starting request for photos...")
         
-        flickrClient.getImagesFromFlickrBySearch() { (data: AnyObject?, error: NSError?) -> Void in
+        flickrClient.fetchImagesWithLatitudeAndLongitude() { (data: AnyObject?, error: NSError?) -> Void in
             
             if error != nil {
+                print("There was an error getting the images: \(String(describing: error))")
                 DispatchQueue.main.async {
-                    print("There was an error getting the images: \(String(describing: error))")
-                    DispatchQueue.main.async {
-                        self.activityIndicator.stopAnimating()
-                        self.collectionButton.isEnabled = true
-                        if isInternetAvailable() == false {
-                            Alerts.displayInternetConnectionAlert(from: self)
-                        } else {
-                            Alerts.displayStandardAlert(from: self)
-                        }
+                    self.activityIndicator.stopAnimating()
+                    self.collectionButton.isEnabled = true
+                    if isInternetAvailable() == false {
+                        Alerts.displayInternetConnectionAlert(from: self)
+                    } else {
+                        Alerts.displayStandardAlert(from: self)
                     }
                 }
                 
             } else {
-                
-                print("JSON parsed. Ready to extract images.")
-                
-                /* GUARD: Did Flickr return an error (stat != ok)? */
-                guard let stat = data?[FlickrRequest.FlickrResponseKeys.Status] as? String, stat == FlickrRequest.FlickrResponseValues.OKStatus else {
-                    print("Flickr API returned an error. See error code and message in \(String(describing: data))")
+                guard let data = data else {
+                    print("No data was returned.")
                     return
                 }
-                
-                /* GUARD: Is the "photos" key in our result? */
-                guard let photosDictionary = data?[FlickrRequest.FlickrResponseKeys.Photos] as? [String:AnyObject] else {
-                    print("Cannot find key '\(FlickrRequest.FlickrResponseKeys.Photos)' in \(String(describing: data))")
-                    return
-                }
-                
-                /* GUARD: Is the "photo" key in photosDictionary? */
-                guard let photosArray = photosDictionary[FlickrRequest.FlickrResponseKeys.Photo] as? [[String: AnyObject]] else {
-                    print("Cannot find key '\(FlickrRequest.FlickrResponseKeys.Photo)' in \(photosDictionary)")
-                    return
-                }
-                
-                self.extractImages(from: photosArray) { (success: Bool) -> Void in
-                    if success {
-                        DispatchQueue.main.async {
-                            self.activityIndicator.stopAnimating()
-                            self.collectionButton.isEnabled = true
-                            self.collectionView.reloadData()
-                        }
-                    } else {
-                        // TODO: Display alert
-                        print("Photos could not be extracted.")
+                let photos = self.flickrClient.extractPhotos(fromJSONDictionary: data)
+                if !photos.isEmpty {
+                    print("There were \(photos.count) photos returned.")
+                    // for photo in photos, fetch image data, save to core data
+                    for photo in photos {
+                        self.fetchSingleImage(for: photo)
+                    }
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.collectionButton.isEnabled = true
+                    }
+                } else {
+                    print("No photos were returned.")
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.collectionButton.isEnabled = true
                     }
                 }
+                
             }
         }
     }
     
-    // MARK: - Extract Images from API Call
-    
-    func extractImages(from photosArray: [[String: AnyObject]], completionHandler: @escaping (Bool)->Void) {
+    func fetchSingleImage(for photo: Photo) {
         
-        if photosArray.count == 0 {
-            // TODO: Add alert no photos found
-            print("No Photos Found. Search Again.")
-            return
-            
-        } else {
-            for photoDict in photosArray {
-                /* GUARD: Does our photo have a key for 'url_m'? */
-                guard let imageUrlString = photoDict[FlickrRequest.FlickrResponseKeys.MediumURL] as? String else {
-                    print("Cannot find key \(FlickrRequest.FlickrResponseKeys.MediumURL) in \(photoDict)")
-                    completionHandler(false)
+        self.flickrClient.fetchImage(for: photo) { (data: Data?) -> Void in
+            guard let imageData = data,
+                let _ = UIImage(data: imageData) else {
+                print("Image data could not be extracted")
                     return
                 }
-                // if an image exists at the url, open image and add to photos
-                let imageURL = URL(string: imageUrlString)
-                if let imageData = try? Data(contentsOf: imageURL!) {
-                    // save Data to a FlickerPhoto object
-                    self.addFlickrPhotoToDatabase(imageData: imageData)
-                }
-                // send success or fail message to reload collection view
-                completionHandler(true)
+            DispatchQueue.main.async {
+                self.addFlickrPhotoToDatabase(imageData: imageData)
             }
         }
     }
+
     
     // MARK: - Add FlickrPhoto to Database
     

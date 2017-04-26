@@ -11,41 +11,35 @@ import UIKit
 
 class FlickrClient : NSObject {
     
-    // MARK: Properties
+    // MARK: - Properties
     
     var session = URLSession.shared
     var flickrRequest = FlickrRequest()
     
-    // MARK: Flickr API
+    // MARK: - Fetch all Images with Latitude and Longitude
     
-    func getImagesFromFlickrBySearch(completionHandlerForGetImages: @escaping (_ result: AnyObject?, _ error: NSError?) -> Void) {
+    func fetchImagesWithLatitudeAndLongitude(completionHandler: @escaping (_ result: AnyObject?, _ error: NSError?) -> Void) {
+        
+        print("2. Building request for all photos...")
         
         /* Set the Parameters */
         var methodParameters: [String: Any] = [
-            FlickrRequest.FlickrParameterKeys.SafeSearch: FlickrRequest.FlickrParameterValues.UseSafeSearch,
-            FlickrRequest.FlickrParameterKeys.Extras: FlickrRequest.FlickrParameterValues.MediumURL,
-            FlickrRequest.FlickrParameterKeys.APIKey: FlickrRequest.FlickrParameterValues.APIKey,
-            FlickrRequest.FlickrParameterKeys.Method: FlickrRequest.FlickrParameterValues.SearchMethod,
-            FlickrRequest.FlickrParameterKeys.Format: FlickrRequest.FlickrParameterValues.ResponseFormat,
-            FlickrRequest.FlickrParameterKeys.NoJSONCallback: FlickrRequest.FlickrParameterValues.DisableJSONCallback,
             FlickrRequest.FlickrParameterKeys.Latitude: FlickrRequest.FlickrParameterValues.DesiredLatitude,
-            FlickrRequest.FlickrParameterKeys.Longitude: FlickrRequest.FlickrParameterValues.DesiredLongitude,
-            FlickrRequest.FlickrParameterKeys.ResultsPerPage: FlickrRequest.FlickrParameterValues.DesiredNumberOfResults]
+            FlickrRequest.FlickrParameterKeys.Longitude: FlickrRequest.FlickrParameterValues.DesiredLongitude]
         
-         /* Build the URL */
-        var getRequestURL = flickrRequest.buildURLFromParameters(methodParameters)
+        /* Build the URL */
+        var getRequestURL = flickrRequest.buildURL(fromParameters: methodParameters)
         
         /* Configure the request */
-        let request = NSMutableURLRequest(url: getRequestURL)
-        print("Requesting photos...")
+        let request = URLRequest(url: getRequestURL)
         
         // create network request
-        let task = session.dataTask(with: request as URLRequest) { (data, response, error) in
+        let task = session.dataTask(with: request) { (data, response, error) in
             
             func sendError(_ error: String) {
                 print(error)
                 let userInfo = [NSLocalizedDescriptionKey : error]
-                completionHandlerForGetImages(nil, NSError(domain: "getImagesFromFlickrBySearch", code: 1, userInfo: userInfo))
+                completionHandler(nil, NSError(domain: "getImagesWithLatitudeAndLongitude", code: 1, userInfo: userInfo))
             }
             
             /* GUARD: Was there an error? */
@@ -68,10 +62,44 @@ class FlickrClient : NSObject {
             
             //print(NSString(data: data, encoding: String.Encoding.utf8.rawValue)!)
             /* Parse the Parse data and use the data (happens in completion handler) */
-            self.parseJSONDataWithCompletionHandler(data, completionHandlerForData: completionHandlerForGetImages)
+            self.parseJSONDataWithCompletionHandler(data, completionHandlerForData: completionHandler)
         }
+        task.resume()
+    }
+    
+    // MARK: - Fetch single image from URL
+    
+    func fetchImage(for photo: Photo, completionHandler: @escaping (_ data: Data?) -> Void) {
         
-        /* Start the request */
+        /* Build the URL */
+        let photoURL = photo.remoteURL
+        
+        /* Configure the request */
+        let request = URLRequest(url: photoURL)
+        
+        // create network request
+        let task = session.dataTask(with: request) { (data, response, error) in
+            
+            /* GUARD: Was there an error? */
+            guard (error == nil) else {
+                print("There was an error with your request: \(String(describing: error))")
+                return
+            }
+            
+            /* GUARD: Did we get a successful 2XX response? */
+            guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode >= 200 && statusCode <= 299 else {
+                print("Your request returned a status code other than 2xx!")
+                return
+            }
+            
+            /* GUARD: Was there any data returned? */
+            guard let data = data else {
+                print("No data was returned by the request!")
+                return
+            }
+            
+            completionHandler(data)
+        }
         task.resume()
     }
     

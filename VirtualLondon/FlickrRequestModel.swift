@@ -8,6 +8,10 @@
 
 import Foundation
 
+enum FlickrError: Error {
+    case invalidJSONData
+}
+
 struct FlickrRequest {
     
     // MARK: - Properties
@@ -53,17 +57,30 @@ struct FlickrRequest {
         static let OKStatus = "ok"
     }
     
-    func buildURLFromParameters(_ parameters: [String: Any]) -> URL {
+    func buildURL(fromParameters parameters: [String: Any]?) -> URL {
         var components = URLComponents()
         components.scheme = FlickrURL.Scheme
         components.host = FlickrURL.Host
         components.path = FlickrURL.Path
-        components.queryItems = [URLQueryItem]()
-        
-        for (key, value) in parameters {
-            let queryItem = URLQueryItem(name: key, value: "\(value)")
-            components.queryItems!.append(queryItem)
+        var queryItems = [URLQueryItem]()
+        let baseParams: [String: Any] = [FlickrParameterKeys.SafeSearch: FlickrParameterValues.UseSafeSearch,
+                          FlickrParameterKeys.Extras: FlickrParameterValues.MediumURL,
+                          FlickrParameterKeys.APIKey: FlickrParameterValues.APIKey,
+                          FlickrParameterKeys.Method: FlickrParameterValues.SearchMethod,
+                          FlickrParameterKeys.Format: FlickrParameterValues.ResponseFormat,
+                          FlickrParameterKeys.NoJSONCallback: FlickrParameterValues.DisableJSONCallback,
+                          FlickrParameterKeys.ResultsPerPage: FlickrParameterValues.DesiredNumberOfResults]
+        for (key, value) in baseParams {
+            let item = URLQueryItem(name: key, value: "\(value)")
+            queryItems.append(item)
         }
+        if let additionalParams = parameters {
+            for (key, value) in additionalParams {
+                let queryItem = URLQueryItem(name: key, value: "\(value)")
+                queryItems.append(queryItem)
+            }
+        }
+        components.queryItems = queryItems
         print("URL request is: \(components.url!)")
         return components.url!
     }

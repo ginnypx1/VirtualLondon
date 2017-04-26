@@ -15,7 +15,7 @@ extension FlickrClient {
     
     func parseJSONDataWithCompletionHandler(_ data: Data, completionHandlerForData: (_ result: AnyObject?, _ error: NSError?) -> Void) {
         
-        print("Parsing JSON...")
+        print("3. Parsing JSON...")
         
         var parsedResult: AnyObject! = nil
         do {
@@ -27,5 +27,39 @@ extension FlickrClient {
         
         completionHandlerForData(parsedResult, nil)
     }
+    
+    // MARK: - Extract All Photos from JSON
+    
+    func extractPhotos(fromJSONDictionary jsonDictionary: AnyObject) -> [Photo] {
+        print("4. Extracting list of all photos from JSON")
+        var allPhotos = [Photo]()
+
+        guard let photos = jsonDictionary[FlickrRequest.FlickrResponseKeys.Photos] as? [String: Any],
+              let photosArray = photos[FlickrRequest.FlickrResponseKeys.Photo] as? [[String: Any]] else {
+                print("The propert keys are not in the provided JSON array.")
+                return []
+        }
+        
+        print("photos dict: \(photos)")
+        
+        for photoDict in photosArray {
+            if let photo = self.createPhoto(from: photoDict) {
+                allPhotos.append(photo)
+            }
+        }
+        return allPhotos
+    }
+    
+    // MARK: - Extract Image from Single Photo
+    
+    private func createPhoto(from jsonDict: [String: Any]) -> Photo? {
+        guard let photoURLString = jsonDict["url_m"] as? String,
+              let url = URL(string: photoURLString) else {
+                return nil
+        }
+        // TODO: Instead of returning photo, save to core data
+        return Photo(remoteURL: url)
+    }
+    
     
 }

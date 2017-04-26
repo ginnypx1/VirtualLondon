@@ -96,6 +96,7 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="collectionButton" destination="BGc-br-APM" id="BTg-XW-jMw"/>
                         <outlet property="collectionView" destination="Mhv-eh-sVm" id="NW3-WP-f1E"/>
                         <outlet property="flowLayout" destination="6dT-uI-W1k" id="e5A-FC-iYy"/>
                         <outlet property="mapView" destination="H01-am-HIo" id="LMA-OV-3eb"/>

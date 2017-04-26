@@ -10,23 +10,41 @@ import UIKit
 import MapKit
 import CoreData
 
-class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
-    
+class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, NSFetchedResultsControllerDelegate {
+
     // MARK: - Outlets
     
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var flowLayout: UICollectionViewFlowLayout!
     @IBOutlet weak var collectionView: UICollectionView!
+    @IBOutlet weak var collectionButton: UIButton!
     
     // MARK: - Properties
     
+    // API call
     var flickrClient = FlickrClient()
+
+    // fetched results controller
+    lazy var fetchedResultsController: NSFetchedResultsController<FlickrPhoto> = { () -> NSFetchedResultsController<FlickrPhoto> in
+        let fetchRequest = NSFetchRequest<FlickrPhoto>(entityName: "FlickrPhoto")
+        fetchRequest.sortDescriptors = []
+        
+        let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.sharedContext, sectionNameKeyPath: nil, cacheName: nil)
+        fetchedResultsController.delegate = self
+        
+        return fetchedResultsController
+    }()
+    var sharedContext: NSManagedObjectContext!
     
-    var context: NSManagedObjectContext!
+    var selectedIndexes = [IndexPath]()
+    var insertedIndexPaths: [IndexPath]!
+    var deletedIndexPaths: [IndexPath]!
+    var updatedIndexPaths: [IndexPath]!
     
-    let flickrPhotoFetchRequest = NSFetchRequest<FlickrPhoto>(entityName: "FlickrPhoto")
-    
+    // activity indicator
     var activityIndicator: UIActivityIndicatorView!
+    
+    var isEditingPhotoAlbum: Bool = false
     
     // MARK: - View
     
@@ -39,21 +57,18 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         
         // create map
         createMap()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(true)
         
-        // access the Core Data stack
+        // Get the stack
         let delegate = UIApplication.shared.delegate as! AppDelegate
         let stack = delegate.stack
-        context = stack.context
+        sharedContext = stack.context
         
-        // fetch data
-        fetchFlickrImages()
-        
-        // load Images
-        loadImages()
+        // Start the fetched results controller
+        do {
+            try fetchedResultsController.performFetch()
+        } catch {
+            print("Error performing initial fetch")
+        }
     }
     
     // MARK: - Activity Indicator
@@ -88,34 +103,65 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
     
+    // MARK: - Collection Button
+    
+    func configureButton() {
+        if isEditingPhotoAlbum {
+            collectionButton.setTitle("Remove Selected Pictures",for: .normal)
+        } else {
+            collectionButton.setTitle("New Collection",for: .normal)
+        }
+    }
+    
     // MARK: - Collection View
     
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        return self.fetchedResultsController.sections?.count ?? 0
+    }
+    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // returns the number of flickr photos
-        return  PhotoAlbum.albumImages.count
+        let sectionInfo = self.fetchedResultsController.sections![section]
+        
+        print("number Of Cells: \(sectionInfo.numberOfObjects)")
+        return sectionInfo.numberOfObjects
+    }
+    
+    func configureCell(_ cell: PhotoViewCell, atIndexPath indexPath: IndexPath) {
+        let flickrPhoto = self.fetchedResultsController.object(at: indexPath)
+
+        let photo = UIImage(data: flickrPhoto.imageData! as Data)
+        cell.imageView?.image = photo
+        
+        // If the cell is "selected", it is grayed out, or marked for deletion
+        if let _ = selectedIndexes.index(of: indexPath) {
+            cell.imageView.alpha = 0.5
+            self.isEditingPhotoAlbum = true
+        } else {
+            cell.imageView.alpha = 1.0
+            self.isEditingPhotoAlbum = false
+        }
+        configureButton()
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoViewCell", for: indexPath) as! PhotoViewCell
-        
-        let photo = PhotoAlbum.albumImages[(indexPath as NSIndexPath).row]
-        cell.imageView?.image = photo
-        
+        self.configureCell(cell, atIndexPath: indexPath)
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // delete the photo from core data and the view
-        let selectedFlickrPhoto = PhotoAlbum.albumFlickrPhotos[(indexPath as NSIndexPath).row]
-        self.context.delete(selectedFlickrPhoto)
-        PhotoAlbum.albumFlickrPhotos.remove(at: (indexPath as NSIndexPath).row)
+        print("in collectionView(_:didSelectItemAtIndexPath)")
+        let cell = collectionView.cellForItem(at: indexPath) as! PhotoViewCell
         
-        // remove from view
-        PhotoAlbum.albumImages.remove(at: (indexPath as NSIndexPath).row)
-        // reload view
-        self.collectionView.reloadData()
-
-        // TODO: replace it
+        // Whenever a cell is tapped we will toggle its presence in the selectedIndexes array
+        if let index = selectedIndexes.index(of: indexPath) {
+            selectedIndexes.remove(at: index)
+        } else {
+            selectedIndexes.append(indexPath)
+        }
+        
+        // Then reconfigure the cell
+        configureCell(cell, atIndexPath: indexPath)
     }
     
     // MARK: - Create Map
@@ -137,40 +183,72 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         self.mapView.addAnnotation(annotation)
     }
     
-    // MARK: - Fetch Images from Core Data
+    // MARK: - Fetched Results Controller Delegate
     
-    func fetchFlickrImages() {
-        do {
-            // fetch photos
-            let allFlickrPhotos = try self.context.fetch(flickrPhotoFetchRequest)
-            // add photos to view
-            print("All photos count: \(allFlickrPhotos.count)")
-            for photo in allFlickrPhotos {
-                // add pin to PhotoAlbum.albumFlickerPhotos
-                PhotoAlbum.albumFlickrPhotos.append(photo)
-                // extract data, add to PhotoAlbumModel
-                if let image = UIImage(data: photo.imageData! as Data) {
-                    PhotoAlbum.albumImages.append(image)
-                }
-            }
-        } catch {
-            fatalError("Failed to fetch pins: \(error)")
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        
+        insertedIndexPaths = [IndexPath]()
+        deletedIndexPaths = [IndexPath]()
+        updatedIndexPaths = [IndexPath]()
+        
+        print("in controllerWillChangeContent")
+    }
+    
+    // The second method may be called multiple times, once for each Color object that is added, deleted, or changed.
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
+        switch type {
+            
+        case .insert:
+            print("Insert an item")
+            insertedIndexPaths.append(newIndexPath!)
+            break
+        case .delete:
+            print("Delete an item")
+            deletedIndexPaths.append(indexPath!)
+            break
+        case .update:
+            print("Update an item.")
+            updatedIndexPaths.append(indexPath!)
+            break
+        case .move:
+            print("Move an item. We don't expect to see this in this app.")
+            break
+            //default:
+            //break
         }
     }
-
-    // MARK: - Determine How To Load Images
     
-    private func loadImages() {
-        if PhotoAlbum.albumImages.count == 0 {
-            fetchImages()
-        } 
+    // This method is invoked after all of the changed objects in the current batch have been collected
+    // into the three index path arrays (insert, delete, and upate). We now need to loop through the
+    // arrays and perform the changes.
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        
+        print("in controllerDidChangeContent. changes.count: \(insertedIndexPaths.count + deletedIndexPaths.count)")
+        
+        collectionView.performBatchUpdates({() -> Void in
+            
+            for indexPath in self.insertedIndexPaths {
+                self.collectionView.insertItems(at: [indexPath])
+            }
+            
+            for indexPath in self.deletedIndexPaths {
+                self.collectionView.deleteItems(at: [indexPath])
+            }
+            
+            for indexPath in self.updatedIndexPaths {
+                self.collectionView.reloadItems(at: [indexPath])
+            }
+            
+        }, completion: nil)
     }
-    
+
     // MARK: - Fetch Images from Flickr
 
     private func fetchImages() {
         
         self.activityIndicator.startAnimating()
+        self.collectionButton.isEnabled = false
+        
         print("Starting request for photos...")
         
         flickrClient.getImagesFromFlickrBySearch() { (data: AnyObject?, error: NSError?) -> Void in
@@ -180,6 +258,7 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
                     print("There was an error getting the images: \(String(describing: error))")
                     DispatchQueue.main.async {
                         self.activityIndicator.stopAnimating()
+                        self.collectionButton.isEnabled = true
                         if isInternetAvailable() == false {
                             Alerts.displayInternetConnectionAlert(from: self)
                         } else {
@@ -214,6 +293,7 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
                     if success {
                         DispatchQueue.main.async {
                             self.activityIndicator.stopAnimating()
+                            self.collectionButton.isEnabled = true
                             self.collectionView.reloadData()
                         }
                     } else {
@@ -247,10 +327,6 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
                 if let imageData = try? Data(contentsOf: imageURL!) {
                     // save Data to a FlickerPhoto object
                     self.addFlickrPhotoToDatabase(imageData: imageData)
-                    // extract the image and add it to photo album
-                    if let image = UIImage(data: imageData) {
-                        PhotoAlbum.albumImages.append(image)
-                    }
                 }
                 // send success or fail message to reload collection view
                 completionHandler(true)
@@ -261,31 +337,41 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     // MARK: - Add FlickrPhoto to Database
     
     func addFlickrPhotoToDatabase(imageData: Data) {
-        let newFlickrPhoto = FlickrPhoto(imageData: imageData, context: self.context)
-        // add photo to PhotoAlbum.albumFlickerPhotos
-        PhotoAlbum.albumFlickrPhotos.append(newFlickrPhoto)
+        let newFlickrPhoto = FlickrPhoto(imageData: imageData, context: fetchedResultsController.managedObjectContext)
         print("Created new photo: \(String(describing: newFlickrPhoto))")
     }
+    
+    // MARK: - Remove FlickrPhoto from Database
+    
+    func deleteAllPhotos() {
+        for photo in fetchedResultsController.fetchedObjects! {
+            sharedContext.delete(photo)
+        }
+    }
+    
+    func deleteSelectedPhotos() {
+        var photosToDelete: [FlickrPhoto] = []
+        for indexPath in selectedIndexes {
+            photosToDelete.append(fetchedResultsController.object(at: indexPath))
+        }
+        for photo in photosToDelete {
+            sharedContext.delete(photo)
+        }
+        selectedIndexes = [IndexPath]()
+    }
 
+    // MARK: - Import new photos or delete photos
 
     @IBAction func importNewPhotos(_ sender: Any) {
-        print("Importing new photos...")
-        // delete all from database
-        do {
-            // fetch photos
-            let allFlickrPhotos = try self.context.fetch(flickrPhotoFetchRequest)
-            // delete all photos
-            for photo in allFlickrPhotos {
-                self.context.delete(photo)
-            }
-            // remove all from album
-            PhotoAlbum.albumFlickrPhotos.removeAll()
-            PhotoAlbum.albumImages.removeAll()
-        } catch {
-            fatalError("Failed to fetch pins: \(error)")
+
+        if isEditingPhotoAlbum {
+            deleteSelectedPhotos()
+            isEditingPhotoAlbum = false
+        } else {
+            deleteAllPhotos()
+            fetchImages()
         }
-        // fetch new photos
-        loadImages()
+        configureButton()
     }
 
 }

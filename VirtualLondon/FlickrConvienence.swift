@@ -32,39 +32,23 @@ extension FlickrClient {
     
     // MARK: - Extract All Photos from JSON
     
-    func extractPhotos(fromJSONDictionary jsonDictionary: AnyObject) -> [Photo] {
+    func extractAllPhotoURLStrings(fromJSONDictionary jsonDictionary: AnyObject) -> [String] {
         print("4. Extracting list of all photos from JSON")
         
-        var allPhotos = [Photo]()
-
+        var allPhotoStrings = [String]()
+        
         guard let photos = jsonDictionary[FlickrRequest.FlickrResponseKeys.Photos] as? [String: Any],
               let photosArray = photos[FlickrRequest.FlickrResponseKeys.Photo] as? [[String: Any]] else {
                 print("The proper keys are not in the provided JSON array.")
                 return []
         }
         
-        // TODO: I am auto using page on here but might like to use a different page
-        // print("photos dict: \(photos)")
-        
         for photoDict in photosArray {
-            if let photo = self.createPhoto(from: photoDict) {
-                allPhotos.append(photo)
+            if let photoURLString = photoDict["url_m"] as? String {
+               allPhotoStrings.append(photoURLString)
             }
         }
-        return allPhotos
+        return allPhotoStrings
     }
-    
-    // MARK: - Extract Image from Single Photo
-    
-    private func createPhoto(from jsonDict: [String: Any]) -> Photo? {
-        
-        guard let photoURLString = jsonDict["url_m"] as? String,
-              let url = URL(string: photoURLString) else {
-                return nil
-        }
-        // TODO: Instead of returning photo, save to core data
-        return Photo(remoteURL: url)
-    }
-    
     
 }

@@ -8,10 +8,6 @@
 
 import Foundation
 
-enum FlickrError: Error {
-    case invalidJSONData
-}
-
 struct FlickrRequest {
     
     // MARK: - Properties
@@ -45,7 +41,6 @@ struct FlickrRequest {
         static let DesiredLatitude = London.latitude
         static let DesiredLongitude = London.longitude
         static let DesiredNumberOfResults = 21
-        static let DesiredPage = 1
     }
 
     struct FlickrResponseKeys {
@@ -69,6 +64,7 @@ struct FlickrRequest {
                           FlickrParameterKeys.Extras: FlickrParameterValues.MediumURL,
                           FlickrParameterKeys.APIKey: FlickrParameterValues.APIKey,
                           FlickrParameterKeys.Method: FlickrParameterValues.SearchMethod,
+                          FlickrParameterKeys.ResultsPerPage: FlickrParameterValues.DesiredNumberOfResults,
                           FlickrParameterKeys.Format: FlickrParameterValues.ResponseFormat,
                           FlickrParameterKeys.NoJSONCallback: FlickrParameterValues.DisableJSONCallback]
         for (key, value) in baseParams {

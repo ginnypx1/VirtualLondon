@@ -16,17 +16,21 @@ class FlickrClient : NSObject {
     var session = URLSession.shared
     var flickrRequest = FlickrRequest()
     
+    var pageRequested: Int = 0
+    
     // MARK: - Fetch all Images with Latitude and Longitude
     
     func fetchImagesWithLatitudeAndLongitude(completionHandler: @escaping (_ result: AnyObject?, _ error: NSError?) -> Void) {
         
         print("2. Building request for all photos...")
         
+        pageRequested += 1
+        
         /* Set the Parameters */
         var methodParameters: [String: Any] = [
             FlickrRequest.FlickrParameterKeys.Latitude: FlickrRequest.FlickrParameterValues.DesiredLatitude,
             FlickrRequest.FlickrParameterKeys.Longitude: FlickrRequest.FlickrParameterValues.DesiredLongitude,
-            FlickrRequest.FlickrParameterKeys.ResultsPerPage: FlickrRequest.FlickrParameterValues.DesiredNumberOfResults]
+            FlickrRequest.FlickrParameterKeys.ResultsPage: pageRequested]
         
         /* Build the URL */
         var getRequestURL = flickrRequest.buildURL(fromParameters: methodParameters)
@@ -61,7 +65,6 @@ class FlickrClient : NSObject {
                 return
             }
             
-            //print(NSString(data: data, encoding: String.Encoding.utf8.rawValue)!)
             /* Parse the Parse data and use the data (happens in completion handler) */
             self.parseJSONDataWithCompletionHandler(data, completionHandlerForData: completionHandler)
         }
@@ -70,13 +73,14 @@ class FlickrClient : NSObject {
     
     // MARK: - Fetch single image from URL
     
-    func fetchImage(for photo: Photo, completionHandler: @escaping (_ data: Data?) -> Void) {
+    func fetchImage(for flickrPhoto: FlickrPhoto, completionHandler: @escaping (_ data: Data?) -> Void) {
         
         /* Build the URL */
-        let photoURL = photo.remoteURL
+        let photoURLString = flickrPhoto.urlString
+        let photoURL = URL(string: photoURLString!)
         
         /* Configure the request */
-        let request = URLRequest(url: photoURL)
+        let request = URLRequest(url: photoURL!)
         
         // create network request
         let task = session.dataTask(with: request) { (data, response, error) in
@@ -100,6 +104,7 @@ class FlickrClient : NSObject {
             }
             
             OperationQueue.main.addOperation {
+                flickrPhoto.imageData = data as NSData
                 completionHandler(data)
             }
         }

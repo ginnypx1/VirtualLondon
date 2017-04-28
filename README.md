@@ -28,9 +28,3 @@ The app will automatically download the 21 most recent photos near the Tower of 
 ## Technical Information
 
 The Flickr API can be found at: https://www.flickr.com/services/api/
-
-## Improvements
-
-- Currently, tapping **New Collection** loads pretty much the same photos as before, unless the user has let some time pass. I'd like to fix that so it loads the next photos in the Flickr set.
-- I would like to update the app to automatically replace deleted photos with new photos.
-- I would like to add activity indicators to each photo in the Collection View as they load.

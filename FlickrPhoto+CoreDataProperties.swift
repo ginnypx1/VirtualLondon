@@ -2,7 +2,7 @@
 //  FlickrPhoto+CoreDataProperties.swift
 //  VirtualLondon
 //
-//  Created by Ginny Pennekamp on 4/23/17.
+//  Created by Ginny Pennekamp on 4/27/17.
 //  Copyright © 2017 GhostBirdGames. All rights reserved.
 //
 
@@ -17,5 +17,6 @@ extension FlickrPhoto {
     }
 
     @NSManaged public var imageData: NSData?
+    @NSManaged public var urlString: String?
 
 }

@@ -37,22 +37,4 @@ class PhotoViewCell: UICollectionViewCell {
         }
     }
     
-//    override func awakeFromNib() {
-//        super.awakeFromNib()
-//        update()
-//    }
-//    
-//    override func prepareForReuse() {
-//        super.prepareForReuse()
-//        update()
-//    }
-//    
-//    func update() {
-//        if imageView.image == nil {
-//            spinner.startAnimating()
-//        } else {
-//            spinner.stopAnimating()
-//        }
-//    }
-    
 }

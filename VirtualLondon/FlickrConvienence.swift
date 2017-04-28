@@ -13,7 +13,7 @@ extension FlickrClient {
     
     // MARK: - Parse JSON Data
     
-    func parseJSONDataWithCompletionHandler(_ data: Data, completionHandlerForData: (_ result: AnyObject?, _ error: NSError?) -> Void) {
+    func parseJSONDataWithCompletionHandler(_ data: Data, completionHandlerForData: @escaping (_ result: AnyObject?, _ error: NSError?) -> Void) {
         
         print("3. Parsing JSON...")
         
@@ -25,22 +25,26 @@ extension FlickrClient {
             completionHandlerForData(nil, NSError(domain: "parseJSONDataWithCompletionHandler", code: 1, userInfo: userInfo))
         }
         
-        completionHandlerForData(parsedResult, nil)
+        OperationQueue.main.addOperation {
+            completionHandlerForData(parsedResult, nil)
+        }
     }
     
     // MARK: - Extract All Photos from JSON
     
     func extractPhotos(fromJSONDictionary jsonDictionary: AnyObject) -> [Photo] {
         print("4. Extracting list of all photos from JSON")
+        
         var allPhotos = [Photo]()
 
         guard let photos = jsonDictionary[FlickrRequest.FlickrResponseKeys.Photos] as? [String: Any],
               let photosArray = photos[FlickrRequest.FlickrResponseKeys.Photo] as? [[String: Any]] else {
-                print("The propert keys are not in the provided JSON array.")
+                print("The proper keys are not in the provided JSON array.")
                 return []
         }
         
-        print("photos dict: \(photos)")
+        // TODO: I am auto using page on here but might like to use a different page
+        // print("photos dict: \(photos)")
         
         for photoDict in photosArray {
             if let photo = self.createPhoto(from: photoDict) {
@@ -53,6 +57,7 @@ extension FlickrClient {
     // MARK: - Extract Image from Single Photo
     
     private func createPhoto(from jsonDict: [String: Any]) -> Photo? {
+        
         guard let photoURLString = jsonDict["url_m"] as? String,
               let url = URL(string: photoURLString) else {
                 return nil

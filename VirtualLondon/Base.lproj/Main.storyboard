@@ -58,19 +58,30 @@
                                             <rect key="frame" x="0.0" y="0.0" width="159" height="156"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                             <subviews>
-                                                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="akJ-RB-zko">
+                                                <imageView userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="akJ-RB-zko">
                                                     <rect key="frame" x="0.0" y="0.0" width="159" height="156"/>
                                                 </imageView>
+                                                <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" style="white" translatesAutoresizingMaskIntoConstraints="NO" id="eQQ-hg-6To">
+                                                    <rect key="frame" x="69" y="68" width="20" height="20"/>
+                                                    <constraints>
+                                                        <constraint firstAttribute="height" constant="20" id="s9w-80-Cv5"/>
+                                                        <constraint firstAttribute="width" constant="20" id="wfQ-rg-B4R"/>
+                                                    </constraints>
+                                                </activityIndicatorView>
                                             </subviews>
                                         </view>
+                                        <color key="backgroundColor" white="0.66666666666666663" alpha="1" colorSpace="calibratedWhite"/>
                                         <constraints>
+                                            <constraint firstItem="eQQ-hg-6To" firstAttribute="centerY" secondItem="Kyd-9l-Dku" secondAttribute="centerY" id="4s8-ex-ey1"/>
                                             <constraint firstAttribute="trailing" secondItem="akJ-RB-zko" secondAttribute="trailing" id="BNQ-aH-F8I"/>
+                                            <constraint firstItem="eQQ-hg-6To" firstAttribute="centerX" secondItem="Kyd-9l-Dku" secondAttribute="centerX" id="BR6-re-cPb"/>
                                             <constraint firstItem="akJ-RB-zko" firstAttribute="leading" secondItem="Kyd-9l-Dku" secondAttribute="leading" id="MJ1-us-KWG"/>
                                             <constraint firstAttribute="bottom" secondItem="akJ-RB-zko" secondAttribute="bottom" id="cbk-Rt-Qkh"/>
                                             <constraint firstItem="akJ-RB-zko" firstAttribute="top" secondItem="Kyd-9l-Dku" secondAttribute="top" id="vg8-o0-ZKk"/>
                                         </constraints>
                                         <connections>
                                             <outlet property="imageView" destination="akJ-RB-zko" id="5Ds-PU-98j"/>
+                                            <outlet property="spinner" destination="eQQ-hg-6To" id="oyi-A6-pBO"/>
                                         </connections>
                                     </collectionViewCell>
                                 </cells>

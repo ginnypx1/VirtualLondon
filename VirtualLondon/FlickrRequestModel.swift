@@ -32,6 +32,7 @@ struct FlickrRequest {
         static let Latitude: String = "lat"
         static let Longitude: String = "lon"
         static let ResultsPerPage: String = "per_page"
+        static let ResultsPage: String = "page"
     }
     
     struct FlickrParameterValues {
@@ -44,6 +45,7 @@ struct FlickrRequest {
         static let DesiredLatitude = London.latitude
         static let DesiredLongitude = London.longitude
         static let DesiredNumberOfResults = 21
+        static let DesiredPage = 1
     }
 
     struct FlickrResponseKeys {
@@ -68,8 +70,7 @@ struct FlickrRequest {
                           FlickrParameterKeys.APIKey: FlickrParameterValues.APIKey,
                           FlickrParameterKeys.Method: FlickrParameterValues.SearchMethod,
                           FlickrParameterKeys.Format: FlickrParameterValues.ResponseFormat,
-                          FlickrParameterKeys.NoJSONCallback: FlickrParameterValues.DisableJSONCallback,
-                          FlickrParameterKeys.ResultsPerPage: FlickrParameterValues.DesiredNumberOfResults]
+                          FlickrParameterKeys.NoJSONCallback: FlickrParameterValues.DisableJSONCallback]
         for (key, value) in baseParams {
             let item = URLQueryItem(name: key, value: "\(value)")
             queryItems.append(item)

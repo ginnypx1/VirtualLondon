@@ -25,7 +25,8 @@ class FlickrClient : NSObject {
         /* Set the Parameters */
         var methodParameters: [String: Any] = [
             FlickrRequest.FlickrParameterKeys.Latitude: FlickrRequest.FlickrParameterValues.DesiredLatitude,
-            FlickrRequest.FlickrParameterKeys.Longitude: FlickrRequest.FlickrParameterValues.DesiredLongitude]
+            FlickrRequest.FlickrParameterKeys.Longitude: FlickrRequest.FlickrParameterValues.DesiredLongitude,
+            FlickrRequest.FlickrParameterKeys.ResultsPerPage: FlickrRequest.FlickrParameterValues.DesiredNumberOfResults]
         
         /* Build the URL */
         var getRequestURL = flickrRequest.buildURL(fromParameters: methodParameters)
@@ -98,7 +99,9 @@ class FlickrClient : NSObject {
                 return
             }
             
-            completionHandler(data)
+            OperationQueue.main.addOperation {
+                completionHandler(data)
+            }
         }
         task.resume()
     }

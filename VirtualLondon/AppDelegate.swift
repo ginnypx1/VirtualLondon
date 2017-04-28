@@ -17,7 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // autosave every minute
-        stack.autoSave(60)
+        stack.autoSave(30)
         return true
     }
     
@@ -28,7 +28,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         } catch {
             print("There was an error saving the app data in WillResignActive.")
         }
-        
     }
     
     func applicationDidEnterBackground(_ application: UIApplication) {
